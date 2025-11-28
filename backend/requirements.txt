@@ -1,0 +1,7 @@
+mcp
+google-cloud-aiplatform
+google-cloud-firestore
+uvicorn
+fastapi
+python-dotenv
+requests

@@ -5,6 +5,7 @@ import uuid
 import re
 from typing import Dict, Any, List, Optional
 from mcp.server.fastmcp import FastMCP
+from google.cloud import firestore
 from dotenv import load_dotenv
 
 # Imports from the user's snippet and ADK
@@ -35,6 +36,10 @@ if LOCATION:
 # Force Vertex AI usage if using Google Cloud Project
 if PROJECT_ID:
     os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "1"
+
+# Initialize Firestore client
+db = firestore.Client()
+EVENTS_COLLECTION = "crisis_events"
 
 mcp = FastMCP("Risk Assessment Agent")
 
@@ -68,6 +73,99 @@ risk_agent = LlmAgent(
     """,
     tools=[google_search]
 )
+
+@mcp.tool()
+def get_assessed_events(status_filter: str = "ASSESSED", limit: int = 50) -> List[Dict[str, Any]]:
+    """
+    Retrieves events from Firestore by status for monitoring and analysis.
+    
+    Args:
+        status_filter: Filter by status (NEW, ASSESSED, ERROR). Default: ASSESSED.
+        limit: Maximum number of events to retrieve. Default: 50.
+        
+    Returns:
+        List of event documents matching the filter.
+    """
+    try:
+        query = db.collection(EVENTS_COLLECTION).where("status", "==", status_filter).limit(limit)
+        docs = query.stream()
+        
+        events = []
+        for doc in docs:
+            event_data = doc.to_dict()
+            event_data["_doc_id"] = doc.id
+            # Convert Firestore timestamps to ISO strings for JSON serialization
+            if "created_at" in event_data and event_data["created_at"]:
+                event_data["created_at"] = event_data["created_at"].isoformat() if hasattr(event_data["created_at"], "isoformat") else str(event_data["created_at"])
+            if "assessed_at" in event_data and event_data["assessed_at"]:
+                event_data["assessed_at"] = event_data["assessed_at"].isoformat() if hasattr(event_data["assessed_at"], "isoformat") else str(event_data["assessed_at"])
+            events.append(event_data)
+        
+        return events
+        
+    except Exception as e:
+        return [{"error": f"Failed to query Firestore: {str(e)}"}]
+
+
+@mcp.tool()
+def get_high_risk_events(min_risk_score: int = 70, limit: int = 50) -> List[Dict[str, Any]]:
+    """
+    Retrieves high-risk events from Firestore for prioritized response.
+    
+    Args:
+        min_risk_score: Minimum risk score threshold (0-100). Default: 70.
+        limit: Maximum number of events to retrieve. Default: 50.
+        
+    Returns:
+        List of high-risk event documents.
+    """
+    try:
+        # Note: Firestore requires an index for this query
+        # Query for ASSESSED events with risk score above threshold
+        query = (db.collection(EVENTS_COLLECTION)
+                .where("status", "==", "ASSESSED")
+                .where("risk_assessment.risk_score", ">=", min_risk_score)
+                .limit(limit))
+        
+        docs = query.stream()
+        
+        events = []
+        for doc in docs:
+            event_data = doc.to_dict()
+            event_data["_doc_id"] = doc.id
+            # Convert timestamps
+            if "created_at" in event_data and event_data["created_at"]:
+                event_data["created_at"] = event_data["created_at"].isoformat() if hasattr(event_data["created_at"], "isoformat") else str(event_data["created_at"])
+            if "assessed_at" in event_data and event_data["assessed_at"]:
+                event_data["assessed_at"] = event_data["assessed_at"].isoformat() if hasattr(event_data["assessed_at"], "isoformat") else str(event_data["assessed_at"])
+            events.append(event_data)
+        
+        return events
+        
+    except Exception as e:
+        # If index doesn't exist, fall back to client-side filtering
+        try:
+            query = db.collection(EVENTS_COLLECTION).where("status", "==", "ASSESSED").limit(limit * 2)
+            docs = query.stream()
+            
+            events = []
+            for doc in docs:
+                event_data = doc.to_dict()
+                risk_score = event_data.get("risk_assessment", {}).get("risk_score", 0)
+                if risk_score >= min_risk_score:
+                    event_data["_doc_id"] = doc.id
+                    if "created_at" in event_data and event_data["created_at"]:
+                        event_data["created_at"] = event_data["created_at"].isoformat() if hasattr(event_data["created_at"], "isoformat") else str(event_data["created_at"])
+                    if "assessed_at" in event_data and event_data["assessed_at"]:
+                        event_data["assessed_at"] = event_data["assessed_at"].isoformat() if hasattr(event_data["assessed_at"], "isoformat") else str(event_data["assessed_at"])
+                    events.append(event_data)
+                    if len(events) >= limit:
+                        break
+            
+            return events
+        except Exception as fallback_error:
+            return [{"error": f"Failed to query high-risk events: {str(fallback_error)}"}]
+
 
 @mcp.tool()
 def classify_event(event_description: str, event_type: str, location: str = "", coordinates: List[float] = None) -> Dict[str, Any]:

@@ -1,6 +1,7 @@
 mcp
 google-cloud-aiplatform
 google-cloud-firestore
+google-cloud-pubsub
 uvicorn
 fastapi
 python-dotenv

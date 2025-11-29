@@ -17,7 +17,7 @@ CrisisNet uses a modular design composed of specialized agents that expose their
 | Agent | Function | Key Tools | Key Technologies |
 | :--- | :--- | :--- | :--- |
 | **Coordinator Agent** | Orchestrates the full pipeline and manages tool calls. | `call_tool` via `ClientSession` | MCP, Python `asyncio` |
-| **Data Collection Agent** | Fetches live information from online feeds and normalizes event objects. | `fetch_disaster_feed`, `fetch_weather` | GDACS API, USGS API, `requests` |
+| **Data Collection Agent** | Fetches live information from online feeds and normalizes event objects. | `fetch_disaster_feed`, `fetch_weather` | GDACS API, `requests` |
 | **Risk Assessment Agent** | Computes severity, type, and risk score for each event. | `classify_event`, `estimate_severity` | **Vertex AI (Gemini-2.5-flash-lite)** |
 | **Geolocation Safety Agent** (Planned) | Maps threats near a user, finds shelters, computes safe routes. | `map_threat_radius`, `find_safe_locations`, `compute_routes`, `rank_routes` | **Google Maps APIs** (Routes, Places, Geocoding) |
 | **Communication Agent** (Planned) | Turns analytics into user friendly instructions. | `create_alert`, `generate_action_plan`, `explain_risk` | **Vertex AI (Gemini)** |
@@ -31,7 +31,7 @@ CrisisNet uses a modular design composed of specialized agents that expose their
 The Coordinator currently runs a basic 2 step workflow:
 
 1. **Fetch Data**  
-   Calls the Data Collection Agent’s `fetch_disaster_feed` with `source="MOCK"` or real APIs (GDACS, USGS).
+   Calls the Data Collection Agent’s `fetch_disaster_feed` with `source="MOCK"` or real APIs (GDACS).
 
 2. **Assess Risk**  
    For each event, calls the Risk Assessment Agent’s `classify_event`, which uses **Gemini-2.5-flash-lite** to generate severity, risk score, and reasoning.

@@ -92,6 +92,8 @@ async def run_workflow():
                                 # Safely get event details
                                 event_type = event.get("type", "Unknown")
                                 description = event.get("description", "")
+                                location = event.get("location", "")
+                                coordinates = event.get("coordinates", None)
                                 
                                 print(f"Analyzing event: {event_type}")
                                 
@@ -100,7 +102,9 @@ async def run_workflow():
                                     "classify_event",
                                     arguments={
                                         "event_description": description,
-                                        "event_type": event_type
+                                        "event_type": event_type,
+                                        "location": location,
+                                        "coordinates": coordinates
                                     }
                                 )
                                 

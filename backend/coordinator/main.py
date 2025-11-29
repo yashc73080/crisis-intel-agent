@@ -98,18 +98,66 @@ async def run_workflow():
                                 
                                 print(f"Analyzing event: {event_type}")
                                 
-                                # Call the risk classification tool
-                                risk_result = await risk_session.call_tool(
-                                    "classify_event",
-                                    arguments={
-                                        "event_description": description,
-                                        "event_type": event_type,
-                                        "location": location,
-                                        "coordinates": coordinates
-                                    }
-                                )
+                                # Retry logic for risk assessment (max 3 attempts)
+                                max_retries = 3
+                                risk_data = None
                                 
-                                print(f"Risk Analysis: {risk_result.content[0].text}")
+                                for attempt in range(1, max_retries + 1):
+                                    try:
+                                        # Call the risk classification tool
+                                        risk_result = await risk_session.call_tool(
+                                            "classify_event",
+                                            arguments={
+                                                "event_description": description,
+                                                "event_type": event_type,
+                                                "location": location,
+                                                "coordinates": coordinates
+                                            }
+                                        )
+                                        
+                                        # Parse and check result
+                                        risk_data = json.loads(risk_result.content[0].text)
+                                        
+                                        # Check if we got a valid response
+                                        if risk_data.get("risk_score", 0) == 0 and risk_data.get("severity") == "Unknown":
+                                            if attempt < max_retries:
+                                                print(f"  ↻ Retry {attempt}/{max_retries} - Got empty response, retrying...")
+                                                await asyncio.sleep(2)
+                                                continue
+                                            else:
+                                                print(f"  ⚠ All retries exhausted, got empty response")
+                                        
+                                        # Success - break out of retry loop
+                                        break
+                                        
+                                    except json.JSONDecodeError:
+                                        if attempt < max_retries:
+                                            print(f"  ↻ Retry {attempt}/{max_retries} - Parse error, retrying...")
+                                            await asyncio.sleep(2)
+                                            continue
+                                        else:
+                                            risk_data = {
+                                                "severity": "Unknown",
+                                                "risk_score": 0,
+                                                "reasoning": "Failed to parse response after retries"
+                                            }
+                                    except Exception as e:
+                                        if attempt < max_retries:
+                                            print(f"  ↻ Retry {attempt}/{max_retries} - Error: {str(e)}, retrying...")
+                                            await asyncio.sleep(2)
+                                            continue
+                                        else:
+                                            risk_data = {
+                                                "severity": "Unknown",
+                                                "risk_score": 0,
+                                                "reasoning": f"Error: {str(e)}"
+                                            }
+                                
+                                # Display result
+                                if risk_data:
+                                    print(f"Risk Analysis: {json.dumps(risk_data, indent=2)}")
+                                else:
+                                    print(f"Risk Analysis: Failed to get assessment")
 
 
 async def run_decoupled_demo():
@@ -253,7 +301,7 @@ if __name__ == "__main__":
                 print("\n[Running Decoupled Architecture Demo]\n")
                 asyncio.run(run_decoupled_demo())
             elif choice == "3":
-                print("\nExiting Coordinator. Goodbye!")
+                print("\nExiting Coordinator.")
                 break
             else:
                 print("\nInvalid choice. Please select 1, 2, or 3.")

@@ -5,3 +5,6 @@ uvicorn
 fastapi
 python-dotenv
 requests
+googlesearch-python
+google-adk
+google-genai

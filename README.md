@@ -148,7 +148,7 @@ python backend/agents/geolocation/test_geolocation.py
 
 ---
 
-### Future Work
+## Future Work
 
 - Integrate additional data sources for other threats (e.g. civil unrest, pandemics, violence).
 - Build a user-friendly frontend interface for broader accessibility.

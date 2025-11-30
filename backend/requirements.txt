@@ -9,3 +9,4 @@ requests
 googlesearch-python
 google-adk
 google-genai
+googlemaps

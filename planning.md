@@ -21,6 +21,8 @@ The backend system is a mature, decoupled microservices architecture with four s
 
 **Backend API Access**: All agents communicate via Model Context Protocol (MCP) through stdio connections. The coordinator manages agent sessions and provides the primary interface for data flow.
 
+**REST APIs**: `backend/api_gateway` provides the FastAPI-based REST API wrapper around the coordinator for external communication.
+
 ## Desired End State
 
 A fully functional web application with:
@@ -65,7 +67,7 @@ A fully functional web application with:
 ### Project Structure
 
 ```
-crisisnet-frontend/
+frontend/
 ├── public/
 │   ├── index.html
 │   └── favicon.ico

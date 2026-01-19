@@ -3,6 +3,7 @@ import os
 import json
 from typing import List, Dict, Any, Optional
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 # Imports from your existing coordinator
@@ -14,6 +15,15 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = FastAPI(title="CrisisNet API Gateway", version="1.0.0")
+
+# Add CORS middleware to allow frontend requests
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://localhost:3001"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # --- Agent Configuration (Copied from coordinator/main.py) ---
 current_dir = os.path.dirname(os.path.abspath(__file__))
